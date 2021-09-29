@@ -64,28 +64,37 @@ author:
 '''
 
 EXAMPLES = r'''
-- name: Enable a new global PTP profile
+- name: Create a new Fabric Node Controls monitoring policiy
   cisco.aci.aci_ap:
     host: apic
     username: admin
     password: SomeSecretPassword
-    admin_state: enabled
-    profile: aes67 
+    policy: <name_of_the_policy> 
     state: present
-    validate_certs: no
   delegate_to: localhost
-- name: Disable a global PTP profile
+- name: Create a new Fabric Node Controls monitoring policiy with DOM enabled
   cisco.aci.aci_ap:
     host: apic
     username: admin
     password: SomeSecretPassword
+    policy: <name_of_the_policy>
+    dom_control : 1 
+    state: present
+  delegate_to: localhost
+- name: Delete a Fabric Node Controls monitoring policiy
+  cisco.aci.aci_ap:
+    host: apic
+    username: admin
+    password: SomeSecretPassword
+    policy: <name_of_the_policy>
     state: absent
   delegate_to: localhost
-- name: Query a global PTP policy
+- name: Query a Fabric Node Controls monitoring policiy
   cisco.aci.aci_ap:
     host: apic
     username: admin
     password: SomeSecretPassword
+    policy: <name_of_the_policy>
     state: query
   delegate_to: localhost
   register: query_result
