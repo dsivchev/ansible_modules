@@ -22,7 +22,6 @@ options:
     - Enable PTP mode.
     type: str
     choices: [ enabled, disabled ]
-
   profile:
     description:
     - The name of the PTP Profile.
@@ -37,15 +36,11 @@ options:
     type: str
     choices: [ absent, present, query ]
     default: present
-  name_alias:
-    description:
-    - The alias for the current object. This relates to the nameAlias field in ACI.
-    type: str
 extends_documentation_fragment:
 - cisco.aci.aci
 notes:
--
-seealso:
+- "absent" state is not deleting the object. class:latencyPtpMode can be only enabled or disabled but not removed.
+see also:
 - name: APIC Management Information Model reference
   description: More information about the internal APIC class (latency:ptpmode).
   link: https://developer.cisco.com/docs/apic-mim-ref/
@@ -54,37 +49,24 @@ author:
 '''
 
 EXAMPLES = r'''
-- name: Add a new AP
+- name: Enable a new global PTP profile
   cisco.aci.aci_ap:
     host: apic
     username: admin
     password: SomeSecretPassword
-    tenant: production
-    ap: default
-    description: default ap
-    monitoring_policy: default
+    admin_state: enabled
+    profile: aes67 
     state: present
+    validate_certs: no
   delegate_to: localhost
-- name: Remove an AP
+- name: Disable a global PTP profile
   cisco.aci.aci_ap:
     host: apic
     username: admin
     password: SomeSecretPassword
-    tenant: production
-    ap: default
     state: absent
   delegate_to: localhost
-- name: Query an AP
-  cisco.aci.aci_ap:
-    host: apic
-    username: admin
-    password: SomeSecretPassword
-    tenant: production
-    ap: default
-    state: query
-  delegate_to: localhost
-  register: query_result
-- name: Query all APs
+- name: Query a global PTP policy
   cisco.aci.aci_ap:
     host: apic
     username: admin
@@ -100,7 +82,7 @@ current:
   returned: success
   type: list
   sample:
-    [
+        [
         {
             "fvTenant": {
                 "attributes": {
@@ -199,6 +181,7 @@ url:
   sample: https://10.11.12.13/api/mo/uni/fabric/ptpmode.json
 '''
 
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.cisco.aci.plugins.module_utils.aci import ACIModule, aci_argument_spec
 
@@ -207,18 +190,18 @@ def main():
     argument_spec = aci_argument_spec()
     argument_spec.update(
         admin_state=dict(type='str', choices=['enabled', 'disabled']), 
-        profile=dict(type='str', choices=[ 'aes67', 'smpte', 'default' ], default='aes67', aliases=['fabric_ptp_profile']), 
+        profile=dict(type='str', choices=[ 'aes67', 'smpte', 'default' ], default='aes67', aliases=['ptp_profile']), 
         state=dict(type='str', default='present', choices=['absent', 'present', 'query']),
-        name_alias=dict(type='str'),
+        #name_alias=dict(type='str'),
     )
 
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
-        required_if=[
-            ['state', 'absent', ['tenant', 'ap']],
-            ['state', 'present', ['tenant', 'ap']],
-        ],
+        #required_if=[
+        #    ['state', 'absent', [admin_state]],
+        #    ['state', 'present', [admin_state]],
+        #],
     )
 
     admin_state = module.params.get('admin_state')
@@ -232,19 +215,26 @@ def main():
         root_class=dict(
             aci_class='latencyPtpMode',
             aci_rn='fabric/ptpmode',
-            #module_object=tenant,
-            #target_filter={'name': tenant},
-        )
+        ),
     )
 
     aci.get_existing()
 
+    
     if state == 'present':
+        if profile == "default":
+            fabSyncIntvl = 1
+            fabDelayIntvl = 0
+        else:
+            fabSyncIntvl = -2
+            fabDelayIntvl = -3
         aci.payload(
             aci_class='latencyPtpMode',
             class_config=dict(
                 state=admin_state,
                 fabProfileTemplate=profile,
+                fabSyncIntvl=fabSyncIntvl,
+                fabDelayIntvl=fabDelayIntvl,
                 #nameAlias=name_alias,
             ),
         )
@@ -254,7 +244,18 @@ def main():
         aci.post_config()
 
     elif state == 'absent':
-        aci.delete_config()
+        aci.payload(
+            aci_class='latencyPtpMode',
+            class_config=dict(
+                state="disabled",
+                fabProfileTemplate=profile,
+            ),
+        )
+        
+        aci.get_diff(aci_class='latencyPtpMode')
+
+        aci.post_config()
+
 
     aci.exit_json()
 

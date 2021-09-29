@@ -1,1 +1,7 @@
 python3_ansible
+ansible.cfg
+hosts
+test_plaaybook.yaml
+*.yaml
+*.yml
+.gitignore
